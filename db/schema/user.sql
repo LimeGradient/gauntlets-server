@@ -6,6 +6,6 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS apiKeys (
-    key TEXT PRIMARY KEY,
-    createdBy INTEGER NOT NULL
+    createdBy INTEGER PRIMARY KEY,
+    key TEXT NOT NULL
 );

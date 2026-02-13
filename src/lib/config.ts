@@ -12,24 +12,10 @@ interface ConfigFile {
         name: string,
         email: string,
         password: string
+    },
+    logging_settings: {
+        show_admin_api_key_on_launch: boolean
     }
-}
-
-export function generateConfigFile() {
-    const defaultConfig: ConfigFile = {
-        server_port: 3000,
-        database_name: "database",
-        admin_account: {
-            id: 1,
-            name: "admin",
-            email: "admin@admin.net",
-            password: crypto.randomBytes(16).toString('hex')
-        }
-    }
-
-    fs.writeFileSync(path.join(import.meta.dirname, "../../config/config.json"), JSON.stringify(
-        defaultConfig, null, 4
-    ))
 }
 
 export function loadConfigFile(): ConfigFile {
@@ -63,7 +49,27 @@ export function loadConfigFile(): ConfigFile {
     return fileData
 }
 
-export async function generateAdminAccount(config: ConfigFile) {
+function generateConfigFile() {
+    const defaultConfig: ConfigFile = {
+        server_port: 3000,
+        database_name: "database",
+        admin_account: {
+            id: 1,
+            name: "admin",
+            email: "admin@admin.net",
+            password: crypto.randomBytes(16).toString('hex')
+        },
+        logging_settings: {
+            show_admin_api_key_on_launch: true
+        }
+    }
+
+    fs.writeFileSync(path.join(import.meta.dirname, "../../config/config.json"), JSON.stringify(
+        defaultConfig, null, 4
+    ))
+}
+
+async function generateAdminAccount(config: ConfigFile) {
     try {
         db.prepare("INSERT INTO users (id, name, email, password) VALUES (?, ?, ?, ?)").run(
             config.admin_account.id,
@@ -73,6 +79,26 @@ export async function generateAdminAccount(config: ConfigFile) {
         )
     } catch (error) {
         console.error("Error generating admin account: " + error)
+    }
+}
+
+export function getAdminAPIKey(admin_user_id: number) {
+    const apiKeyRow = db.prepare("SELECT * FROM apiKeys WHERE createdBy = ?").get(admin_user_id)
+    if (apiKeyRow === undefined) {
+        const key = crypto.randomBytes(16).toString('hex')
+        db.prepare("INSERT INTO apiKeys (createdBy, key) VALUES (?, ?)").run(admin_user_id, key)
+        return key
+    } else {
+        return (apiKeyRow as any).key as string
+    }
+}
+
+export function verifyAPIKey(api_key: string): boolean {
+    const apiKeyRow = db.prepare("SELECT * FROM apiKeys WHERE key = ?").get(api_key)
+    if (apiKeyRow === undefined) {
+        return false
+    } else {
+        return true
     }
 }
 
